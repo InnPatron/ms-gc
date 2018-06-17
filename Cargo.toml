@@ -1,0 +1,6 @@
+[package]
+name = "ms-gc"
+version = "0.1.0"
+authors = ["Alexander Vo <randomcivvy0121@gmail.com>"]
+
+[dependencies]
