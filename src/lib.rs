@@ -1,18 +1,9 @@
 use std::ptr;
 use std::mem;
 
-#[repr(u8)]
-#[derive(Copy, Clone)]
-enum Color {
-    R,
-    G,
-    B
-}
-
 pub struct GC {
     allocd: *mut ObjHeader,
     tail: *mut ObjHeader,
-    alloc_color: Color,
 }
 
 impl GC {
@@ -20,7 +11,6 @@ impl GC {
         GC {
             allocd: ptr::null_mut(),
             tail: ptr::null_mut(),
-            alloc_color: Color::R,
         }
     }
 
@@ -28,7 +18,6 @@ impl GC {
         let obj_ptr = Box::into_raw(Box::new(Obj {
 
             header: ObjHeader {
-                color: self.alloc_color,
                 next: ptr::null_mut(),
                 block_size: mem::size_of::<T>(),
             },
@@ -80,7 +69,6 @@ pub struct GCObj<T> {
 
 #[repr(C)]
 struct ObjHeader {
-    color: Color,
     next: *mut ObjHeader,
     block_size: usize,
 }
