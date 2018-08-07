@@ -1,6 +1,7 @@
 use std::ptr;
 use std::mem;
 use std::alloc::{alloc, dealloc, Layout};
+use std::cell::Cell;
 
 pub struct GC {
     allocd: Option<ptr::NonNull<Obj<Trace>>>,
@@ -24,7 +25,7 @@ impl GC {
         // Allocate Obj<T>
         let obj_ptr = { 
             let ptr = alloc(layout) as *mut Obj<T>;
-            (*ptr).header.reachable = true;
+            (*ptr).header.reachable = Cell::new(true);
             (*ptr).header.next = None;
             (*ptr).header.block_size = mem::size_of::<T>();
 
@@ -73,7 +74,7 @@ pub struct GCObj<T: Trace + ?Sized + 'static> {
 
 #[repr(C)]
 struct ObjHeader {
-    reachable: bool,
+    reachable: Cell<bool>,
     next: Option<ptr::NonNull<Obj<Trace>>>,
     block_size: usize,
 }
