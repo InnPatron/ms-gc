@@ -71,6 +71,46 @@ impl GC {
             root.trace();
         }
     }
+
+    pub fn sweep(&mut self) {
+        // Predeccesor of the current node in the list
+        let mut pred: Option<ptr::NonNull<Obj<Trace>>> = None;
+        let mut current = self.allocd;
+
+        unsafe {
+            while let Some(obj_ptr) = current {
+
+                let obj_ptr = obj_ptr.as_ptr();
+                if (*obj_ptr).header.reachable.get() {
+                    // Object is still live
+                    // Reset reachable flag and continue through the list
+                    (*obj_ptr).header.reachable.set(false);
+                    current = (*obj_ptr).header.next;
+
+                    // Update
+                    pred = current;
+                } else {
+
+                    // Object is NOT live
+                    // Remove object from the list
+                    match pred {
+                        Some(pred) => {
+                            (*pred.as_ptr()).header.next = (*obj_ptr).header.next;
+                        }
+
+                        None => (),
+                    }
+
+                    // TODO: Call the object's data destructor
+
+                    // Deallocate the object
+                    let layout = (*obj_ptr).header.layout;
+                    let data_ptr = obj_ptr as *mut u8;
+                    dealloc(data_ptr, layout);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
