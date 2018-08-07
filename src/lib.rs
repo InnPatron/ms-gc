@@ -94,3 +94,16 @@ struct Obj<T: Trace + ?Sized + 'static> {
 pub unsafe trait Trace {
     fn trace(&self);
 }
+
+unsafe impl<T: Trace + ?Sized + 'static> Trace for GCObj<T> {
+    fn trace(&self) {
+        unsafe {
+            if !(*self.obj).header.reachable.get() {
+                // Object and children have not been traced yet
+                (*self.obj).header.reachable.set(true);
+                (*self.obj).data.trace();
+            }
+            // Otherwise assume object and children have been traced
+        }
+    }
+}
