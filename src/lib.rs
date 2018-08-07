@@ -15,7 +15,7 @@ impl GC {
         }
     }
 
-    unsafe fn alloc_obj<T>(&self, data: *const T) -> (*mut Obj<T>, *mut ObjHeader) {
+    unsafe fn alloc_obj<T: Trace + 'static>(&self, data: *const T) -> (*mut Obj<T>, *mut ObjHeader) {
         let fake_ptr = data as *const Obj<T>;
 
         // Layout for Obj<T>
@@ -35,7 +35,7 @@ impl GC {
         (obj_ptr, header_ptr)
     }
 
-    pub fn alloc<T>(&mut self, data: T) -> GCObj<T> {
+    pub fn alloc<T: Trace + 'static>(&mut self, data: T) -> GCObj<T> {
         let (obj_ptr, header_ptr) = unsafe { self.alloc_obj(&data as *const T) };
         unsafe { 
             (*obj_ptr).data = data;
@@ -66,7 +66,7 @@ impl GC {
 }
 
 #[derive(Copy, Clone)]
-pub struct GCObj<T> {
+pub struct GCObj<T: Trace + 'static> {
     obj: *mut Obj<T>,
 }
 
@@ -78,7 +78,11 @@ struct ObjHeader {
 }
 
 #[repr(C)]
-struct Obj<T> {
+struct Obj<T: Trace + 'static> {
     header: ObjHeader,
     data: T,
+}
+
+pub trait Trace {
+    fn trace(&self);
 }
