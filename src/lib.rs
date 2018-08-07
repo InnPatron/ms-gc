@@ -3,20 +3,20 @@ use std::mem;
 use std::alloc::{alloc, dealloc, Layout};
 
 pub struct GC {
-    allocd: *mut ObjHeader,
-    tail: *mut ObjHeader,
+    allocd: Option<ptr::NonNull<Obj<Trace>>>,
+    tail: Option<ptr::NonNull<Obj<Trace>>>,
 }
 
 impl GC {
     pub fn new() -> GC {
         GC {
-            allocd: ptr::null_mut(),
-            tail: ptr::null_mut(),
+            allocd: None,
+            tail: None,
         }
     }
 
-    unsafe fn alloc_obj<T: Trace + 'static>(&self, data: *const T) -> (*mut Obj<T>, *mut ObjHeader) {
-        let fake_ptr = data as *const Obj<T>;
+    unsafe fn alloc_obj<T: Trace + 'static>(&self, data: T) -> *mut Obj<T> {
+        let fake_ptr = &data as *const T as *const Obj<T>;
 
         // Layout for Obj<T>
         let layout = Layout::for_value(&*fake_ptr);
@@ -25,26 +25,27 @@ impl GC {
         let obj_ptr = { 
             let ptr = alloc(layout) as *mut Obj<T>;
             (*ptr).header.reachable = true;
-            (*ptr).header.next = ptr::null_mut();
+            (*ptr).header.next = None;
             (*ptr).header.block_size = mem::size_of::<T>();
+
+            (*ptr).data = data;
+
             ptr
         };
 
-        let header_ptr: *mut ObjHeader = &mut ((*obj_ptr).header) as *mut ObjHeader;
-
-        (obj_ptr, header_ptr)
+        obj_ptr
     }
 
     pub fn alloc<T: Trace + 'static>(&mut self, data: T) -> GCObj<T> {
-        let (obj_ptr, header_ptr) = unsafe { self.alloc_obj(&data as *const T) };
-        unsafe { 
-            (*obj_ptr).data = data;
-        }
-        if self.allocd.is_null() {
+        let obj_ptr = unsafe { self.alloc_obj(data) };
+
+        if self.allocd.is_none() {
             // No allocd objects
 
-            self.allocd = header_ptr;
-            self.tail = header_ptr;
+            unsafe {
+                self.allocd = Some(ptr::NonNull::new_unchecked(obj_ptr));
+                self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
+            }
 
             GCObj {
                 obj: obj_ptr
@@ -54,9 +55,9 @@ impl GC {
             
             // Alloc new object and insert at the end of the list
             unsafe {    
-                (*self.tail).next = header_ptr;
+                (*self.tail.unwrap().as_ptr()).header.next = Some(ptr::NonNull::new_unchecked(obj_ptr));
+                self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
             }
-            self.tail = header_ptr;
 
             GCObj {
                 obj: obj_ptr,
@@ -66,23 +67,23 @@ impl GC {
 }
 
 #[derive(Copy, Clone)]
-pub struct GCObj<T: Trace + 'static> {
+pub struct GCObj<T: Trace + ?Sized + 'static> {
     obj: *mut Obj<T>,
 }
 
 #[repr(C)]
 struct ObjHeader {
     reachable: bool,
-    next: *mut ObjHeader,
+    next: Option<ptr::NonNull<Obj<Trace>>>,
     block_size: usize,
 }
 
 #[repr(C)]
-struct Obj<T: Trace + 'static> {
+struct Obj<T: Trace + ?Sized + 'static> {
     header: ObjHeader,
     data: T,
 }
 
-pub trait Trace {
+pub unsafe trait Trace {
     fn trace(&self);
 }
