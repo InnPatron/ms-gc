@@ -27,7 +27,7 @@ impl GC {
             let ptr = alloc(layout) as *mut Obj<T>;
             (*ptr).header.reachable = Cell::new(true);
             (*ptr).header.next = None;
-            (*ptr).header.block_size = mem::size_of::<T>();
+            (*ptr).header.layout = layout;
 
             (*ptr).data = data;
 
@@ -82,7 +82,7 @@ pub struct GCObj<T: Trace + ?Sized + 'static> {
 struct ObjHeader {
     reachable: Cell<bool>,
     next: Option<ptr::NonNull<Obj<Trace>>>,
-    block_size: usize,
+    layout: Layout,
 }
 
 #[repr(C)]
