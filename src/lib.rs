@@ -65,6 +65,12 @@ impl GC {
             }
         }
     }
+
+    pub fn mark(roots: &[&Trace]) {
+        for root in roots {
+            root.trace();
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
