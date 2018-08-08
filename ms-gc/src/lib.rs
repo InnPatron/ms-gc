@@ -10,8 +10,8 @@ pub use trace::*;
 
 
 pub struct GC {
-    allocd: Option<ptr::NonNull<Obj<Trace>>>,
-    tail: Option<ptr::NonNull<Obj<Trace>>>,
+    allocd: Option<ptr::NonNull<ObjHeader>>,
+    tail: Option<ptr::NonNull<ObjHeader>>,
 }
 
 impl GC {
@@ -45,13 +45,14 @@ impl GC {
 
     pub fn alloc<T: Trace + 'static>(&mut self, data: T) -> GCObj<T> {
         let obj_ptr = unsafe { self.alloc_obj(data) };
+        let header_ptr = unsafe { &(*obj_ptr).header as *const ObjHeader as *mut _ };
 
         if self.allocd.is_none() {
             // No allocd objects
 
             unsafe {
-                self.allocd = Some(ptr::NonNull::new_unchecked(obj_ptr));
-                self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
+                self.allocd = Some(ptr::NonNull::new_unchecked(header_ptr));
+                self.tail = Some(ptr::NonNull::new_unchecked(header_ptr));
             }
 
         } else {
@@ -59,8 +60,8 @@ impl GC {
             
             // Alloc new object and insert at the end of the list
             unsafe {    
-                (*self.tail.unwrap().as_ptr()).header.next = Some(ptr::NonNull::new_unchecked(obj_ptr));
-                self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
+                (*self.tail.unwrap().as_ptr()).next = Some(ptr::NonNull::new_unchecked(header_ptr));
+                self.tail = Some(ptr::NonNull::new_unchecked(header_ptr));
             }
             
         }
@@ -80,28 +81,28 @@ impl GC {
 
     pub fn sweep(&mut self) {
         // Predeccesor of the current node in the list
-        let mut pred: Option<ptr::NonNull<Obj<Trace>>> = None;
+        let mut pred = None;
         let mut current = self.allocd;
 
         unsafe {
-            while let Some(obj_ptr) = current {
+            while let Some(header_ptr) = current {
 
-                let obj_ptr = obj_ptr.as_ptr();
-                if (*obj_ptr).header.reachable.get() {
+                let header_ptr = header_ptr.as_ptr();
+                if (*header_ptr).reachable.get() {
                     // Object is still live
                     // Reset reachable flag and continue through the list
-                    (*obj_ptr).header.reachable.set(false);
+                    (*header_ptr).reachable.set(false);
 
                     // Move to the next node
                     pred = current;
-                    current = (*obj_ptr).header.next;
+                    current = (*header_ptr).next;
                 } else {
 
                     // Object is NOT live
                     // Remove object from the list
                     match pred {
                         Some(pred) => {
-                            (*pred.as_ptr()).header.next = (*obj_ptr).header.next;
+                            (*pred.as_ptr()).next = (*header_ptr).next;
                         }
 
                         None => (),
@@ -109,13 +110,14 @@ impl GC {
 
                     // Move to the next node
                     // Predecessor stays the same
-                    current = (*obj_ptr).header.next;
+                    current = (*header_ptr).next;
 
                     // TODO: Call the object's data destructor
 
                     // Deallocate the object
-                    let layout = (*obj_ptr).header.layout;
-                    let data_ptr = obj_ptr as *mut u8;
+                    // NOTE: Deallocation scheme relies on Obj's C representation
+                    let layout = (*header_ptr).layout;
+                    let data_ptr = header_ptr as *mut u8;
                     dealloc(data_ptr, layout);
                 }
             }
@@ -138,7 +140,7 @@ impl<T: Trace + ?Sized + 'static> Clone for GCObj<T> {
 #[repr(C)]
 struct ObjHeader {
     reachable: Cell<bool>,
-    next: Option<ptr::NonNull<Obj<Trace>>>,
+    next: Option<ptr::NonNull<ObjHeader>>,
     layout: Layout,
 }
 
