@@ -53,9 +53,6 @@ impl GC {
                 self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
             }
 
-            GCObj {
-                obj: obj_ptr
-            }
         } else {
             // Some allocd objects
             
@@ -64,9 +61,12 @@ impl GC {
                 (*self.tail.unwrap().as_ptr()).header.next = Some(ptr::NonNull::new_unchecked(obj_ptr));
                 self.tail = Some(ptr::NonNull::new_unchecked(obj_ptr));
             }
+            
+        }
 
+        unsafe {
             GCObj {
-                obj: obj_ptr,
+                obj: ptr::NonNull::new_unchecked(obj_ptr),
             }
         }
     }
@@ -120,7 +120,7 @@ impl GC {
 
 #[derive(Copy, Clone)]
 pub struct GCObj<T: Trace + ?Sized + 'static> {
-    obj: *mut Obj<T>,
+    obj: ptr::NonNull<Obj<T>>
 }
 
 #[repr(C)]
@@ -139,10 +139,10 @@ struct Obj<T: Trace + ?Sized + 'static> {
 unsafe impl<T: Trace + ?Sized + 'static> Trace for GCObj<T> {
     fn trace(&self) {
         unsafe {
-            if !(*self.obj).header.reachable.get() {
+            if !(*self.obj.as_ptr()).header.reachable.get() {
                 // Object and children have not been traced yet
-                (*self.obj).header.reachable.set(true);
-                (*self.obj).data.trace();
+                (*self.obj.as_ptr()).header.reachable.set(true);
+                (*self.obj.as_ptr()).data.trace();
             }
             // Otherwise assume object and children have been traced
         }
