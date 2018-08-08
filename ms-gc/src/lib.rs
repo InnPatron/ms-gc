@@ -119,9 +119,16 @@ impl GC {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct GCObj<T: Trace + ?Sized + 'static> {
     obj: ptr::NonNull<Obj<T>>
+}
+
+impl<T: Trace + ?Sized + 'static> Clone for GCObj<T> {
+    fn clone(&self) -> GCObj<T> {
+        GCObj {
+            obj: self.obj
+        }
+    }
 }
 
 #[repr(C)]
