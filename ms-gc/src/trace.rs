@@ -24,3 +24,12 @@ unsafe impl<T: Trace> Trace for Vec<T> {
         }
     }
 }
+
+unsafe impl<T: Trace> Trace for Option<T> {
+    fn trace(&self) {
+        match self {
+            &Some(ref traceable) => traceable.trace(),
+            None => (),
+        }
+    }
+}
