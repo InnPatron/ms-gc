@@ -2,6 +2,7 @@ use std::ptr;
 use std::mem;
 use std::alloc::{alloc, dealloc, Layout};
 use std::cell::Cell;
+use std::ops::Deref;
 
 mod trace;
 
@@ -128,6 +129,16 @@ struct ObjHeader {
     reachable: Cell<bool>,
     next: Option<ptr::NonNull<Obj<Trace>>>,
     layout: Layout,
+}
+
+impl<T: Trace + ?Sized + 'static> Deref for GCObj<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        unsafe {
+            &(*self.obj.as_ptr()).data
+        }
+    }
 }
 
 #[repr(C)]
