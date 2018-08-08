@@ -91,10 +91,10 @@ impl GC {
                     // Object is still live
                     // Reset reachable flag and continue through the list
                     (*obj_ptr).header.reachable.set(false);
-                    current = (*obj_ptr).header.next;
 
-                    // Update
+                    // Move to the next node
                     pred = current;
+                    current = (*obj_ptr).header.next;
                 } else {
 
                     // Object is NOT live
@@ -106,6 +106,10 @@ impl GC {
 
                         None => (),
                     }
+
+                    // Move to the next node
+                    // Predecessor stays the same
+                    current = (*obj_ptr).header.next;
 
                     // TODO: Call the object's data destructor
 
