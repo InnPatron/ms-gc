@@ -3,6 +3,11 @@ use std::mem;
 use std::alloc::{alloc, dealloc, Layout};
 use std::cell::Cell;
 
+mod trace;
+
+pub use trace::*;
+
+
 pub struct GC {
     allocd: Option<ptr::NonNull<Obj<Trace>>>,
     tail: Option<ptr::NonNull<Obj<Trace>>>,
@@ -129,10 +134,6 @@ struct ObjHeader {
 struct Obj<T: Trace + ?Sized + 'static> {
     header: ObjHeader,
     data: T,
-}
-
-pub unsafe trait Trace {
-    fn trace(&self);
 }
 
 unsafe impl<T: Trace + ?Sized + 'static> Trace for GCObj<T> {
