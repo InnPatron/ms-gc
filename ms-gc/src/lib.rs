@@ -79,7 +79,7 @@ impl GC {
         }
     }
 
-    pub fn sweep(&mut self) {
+    pub unsafe fn sweep(&mut self) {
         // Predeccesor of the current node in the list
         let mut pred = None;
         let mut current = self.allocd;

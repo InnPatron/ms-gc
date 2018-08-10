@@ -37,10 +37,10 @@ fn circular_ref() {
     }
 
     GC::mark(vec![&c1 as &Trace, &c2 as &Trace].as_slice());
-    gc.sweep();
+    unsafe { gc.sweep(); }
 
     GC::mark(vec![&c1 as &Trace].as_slice());
-    gc.sweep();
+    unsafe { gc.sweep(); }
 
     println!("POST: {}", (*c1).1);
     println!("POST: {}", (*c2).1);
