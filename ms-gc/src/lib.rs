@@ -63,7 +63,7 @@ impl GC {
                 (*self.tail.unwrap().as_ptr()).next = Some(ptr::NonNull::new_unchecked(header_ptr));
                 self.tail = Some(ptr::NonNull::new_unchecked(header_ptr));
             }
-
+            
         }
 
         unsafe {
@@ -124,8 +124,6 @@ impl GC {
         }
     }
 }
-
-pub type GCCell<T> = GCObj<::std::cell::RefCell<T>>;
 
 pub struct GCObj<T: Trace + ?Sized + 'static> {
     obj: ptr::NonNull<Obj<T>>
