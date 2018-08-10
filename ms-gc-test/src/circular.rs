@@ -45,4 +45,5 @@ fn circular_ref() {
     println!("POST: {}", (*c1).1);
     println!("POST: {}", (*c2).1);
 
+    unsafe { gc.sweep(); }
 }
