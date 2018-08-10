@@ -31,7 +31,7 @@ impl GC {
         // Allocate Obj<T>
         let obj_ptr = { 
             let ptr = alloc(layout) as *mut Obj<T>;
-            (*ptr).header.reachable = Cell::new(true);
+            (*ptr).header.reachable = Cell::new(false);
             (*ptr).header.next = None;
             (*ptr).header.layout = layout;
 
